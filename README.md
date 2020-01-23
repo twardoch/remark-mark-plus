@@ -46,7 +46,7 @@ This plugin is compatible with [rehype][rehype]. `Mark` mdast nodes will become 
 [npm][npm]:
 
 ```bash
-npm install remark-mark
+npm install remark-mark-plus
 ```
 
 ## Usage
