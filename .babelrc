@@ -1,9 +1,14 @@
 {
-  "presets": ["env"],
-  "plugins": [],
-  "env": {
-    "development": {
-      "sourceMaps": "inline"
-    }
-  }
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "targets": {
+          "node": "18"
+        },
+        "modules": false // Important for ESM to let native Node handle modules
+      }
+    ]
+  ],
+  "plugins": []
 }
