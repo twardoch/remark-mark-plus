@@ -6,34 +6,34 @@
         "François <perso@francoisdambrine.me> (artragis)",
         "Victor Felder <victor@draft.li> (https://draft.li)"
     ],
+    "type": "module",
     "bugs": {
         "url": "https://github.com/twardoch/remark-mark-plus/issues"
     },
-    "type": "module",
     "dependencies": {},
     "devDependencies": {
-        "@babel/cli": "^7.23.0",
-        "@babel/core": "^7.23.0",
-        "@babel/preset-env": "^7.23.0",
+        "@babel/cli": "^7.23.4",
+        "@babel/core": "^7.23.7",
+        "@babel/preset-env": "^7.23.8",
         "cross-env": "^7.0.3",
+        "del": "^7.1.0",
         "del-cli": "^5.1.0",
-        "eslint": "^8.50.0",
-        "eslint-plugin-jest": "^27.6.0",
+        "eslint": "^8.56.0",
+        "eslint-plugin-jest": "^27.6.3",
         "jest": "^29.7.0",
-        "micromark-util-symbol": "^1.0.2",
-        "micromark-util-types": "^1.0.2",
-        "micromark-factory-space": "^1.0.0",
         "mdast-util-from-markdown": "^2.0.0",
         "mdast-util-to-markdown": "^2.1.0",
-        "mdast-util-to-hast": "^13.0.2",
+        "micromark-factory-whitespace": "^2.0.0",
+        "micromark-util-symbol": "^2.0.0",
+        "micromark-util-types": "^2.0.0",
         "rehype-stringify": "^10.0.0",
         "remark-parse": "^11.0.0",
-        "remark-rehype": "^11.0.0",
+        "remark-rehype": "^11.1.0",
         "remark-stringify": "^11.0.0",
         "unified": "^11.0.4"
     },
     "engines": {
-        "node": ">=18"
+        "node": ">=18.0.0"
     },
     "files": [
         "LICENSE",
@@ -41,7 +41,11 @@
         "src",
         "README.md"
     ],
-    "exports": "./dist/index.js",
+    "exports": {
+        ".": "./dist/index.js",
+        "./micromark-syntax": "./dist/lib/micromark-syntax.js",
+        "./package.json": "./package.json"
+    },
     "homepage": "https://github.com/twardoch/remark-mark-plus#readme",
     "keywords": [
         "remark",
@@ -50,7 +54,8 @@
         "gfm",
         "unified",
         "micromark",
-        "mdast"
+        "mdast",
+        "mark"
     ],
     "license": "MIT",
     "main": "dist/index.js",
@@ -60,11 +65,12 @@
         "url": "git+https://github.com/twardoch/remark-mark-plus.git"
     },
     "scripts": {
-        "build": "del-cli dist && cross-env NODE_ENV=production babel src --out-dir dist --source-maps",
+        "build": "del-cli dist && cross-env BABEL_ENV=production babel src --out-dir dist --source-maps",
+        "coverage": "jest --coverage",
         "prepare": "npm run build",
         "pretest": "eslint . --ext .js,.mjs",
-        "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
+        "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest"
     },
-    "version": "2.0.0",
-    "description": "A remark plugin to parse ==highlight== syntax into <mark> HTML elements, compatible with modern Unified and Micromark."
+    "version": "1.0.21",
+    "description": "This plugin parses ==custom Markdown syntax== to the HTML `<mark>` element. It adds a new node type to the [mdast](https://github.com/syntax-tree/mdast/blob/master/readme.md) produced by [remark](https://github.com/remarkjs/remark): `mark` and stringifies to HTML via [rehype](https://github.com/rehypejs/rehype) as `<mark>`."
 }

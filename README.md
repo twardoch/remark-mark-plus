@@ -1,37 +1,36 @@
 # remark-mark-plus
 
-This plugin parses `==highlighted text==` into HTML `<mark>highlighted text</mark>` elements.
-It is a [unified][unified] ([remark][remark]) plugin that leverages [micromark][micromark] for tokenizing.
+This plugin parses `==custom Markdown syntax==` to the HTML `<mark>` element.
+It adds a new node type to the [mdast][mdast] produced by [remark][remark]: `mark`
 
-If you are using [rehype][rehype], the HTML result will be `<mark>contents</mark>`.
-
-## Features
-
-*   Parses `==text==` into `mark` mdast nodes.
-*   Converts `mark` mdast nodes to `<mark>text</mark>` HTML elements when used with rehype.
-*   Supports nesting of other inline markdown within the mark tags (e.g., `==*emphasis*==`).
-*   Follows modern unified/remark/micromark plugin architecture.
-
-## When to use this
-
-If you want to highlight text in your Markdown files using a simple `==text==` syntax and have it render as `<mark>text</mark>` in HTML.
+If you are using [rehype][rehype], the stringified HTML result will be `<mark>`.
 
 ## Syntax
 
 ```markdown
-This is ==highlighted text==.
-You can also highlight ==*emphasized* or **strong** text==.
-Even ==[links](https://example.com)== are supported.
+Click ==File > Open== to open the file.
 ```
-
-This plugin follows the original `remark-mark` behavior regarding spaces:
-*   `== text ==` (with spaces inside but adjacent to markers) will be parsed.
-*   `== text==` (space after opening marker) will *not* be parsed as a mark.
-*   `====` will *not* be parsed as an empty mark (it's treated as literal `====` if `afterOpenMarker`'s `nok` path is hit, or `==<mark></mark>==` if the test case `====not a mark====` is more representative of current behavior). Behavior for `====` might need further refinement depending on exact desired outcome vs. current test suite.
 
 ## AST (see [mdast][mdast] specification)
 
-This plugin adds a `mark` node type to mdast, which is a [Parent][parent] node containing Phrasing content.
+The `Mark` node ([`Parent`][parent]) represents highlighted text. It is a phrasing content node.
+
+Its definition in TypeScript would be:
+```typescript
+import {Parent, PhrasingContent} from 'mdast'
+
+export interface Mark extends Parent {
+  type: 'mark'
+  children: PhrasingContent[]
+}
+
+// To make it available in the mdast content model:
+declare module 'mdast' {
+  interface PhrasingContentMap {
+    mark: Mark
+  }
+}
+```
 
 For example, the following markdown:
 
@@ -42,19 +41,16 @@ Yields:
 ```javascript
 {
   type: 'mark',
-  children: [
-    {
-      type: 'text',
-      value: 'File > Open'
-    }
-  ]
+  children: [{
+    type: 'text',
+    value: 'File > Open'
+  }]
 }
 ```
 
-## Compatibility
+## Rehype
 
-This plugin is compatible with Node.js 18+ and modern versions of unified, remark, and rehype.
-It is an ESM-only package.
+This plugin is compatible with [rehype][rehype]. `Mark` mdast nodes will become `<mark>contents</mark>`.
 
 ## Installation
 
@@ -66,80 +62,70 @@ npm install remark-mark-plus
 
 ## Usage
 
-Example:
+Dependencies:
 
 ```javascript
 import {unified} from 'unified'
 import remarkParse from 'remark-parse'
-import remarkMarkPlus from 'remark-mark-plus' // This plugin
 import remarkRehype from 'remark-rehype'
 import rehypeStringify from 'rehype-stringify'
-import {VFile} from 'vfile' // For file message reporting
-
-const markdown = `
-This is ==highlighted text==.
-And this is ==*important* and highlighted==.
-This is not a mark: ===highlight=== or == highlight ==
-`
-
-async function main() {
-  const file = await unified()
-    .use(remarkParse)
-    .use(remarkMarkPlus)
-    .use(remarkRehype)
-    .use(rehypeStringify)
-    .process(markdown)
-
-  console.log(String(file))
-}
-
-main()
+import remarkMarkPlus from 'remark-mark-plus' // or './path/to/src/index.js' if local
 ```
 
-Output HTML:
+Usage:
 
-```html
-<p>This is <mark>highlighted text</mark>.
-And this is <mark><em>important</em> and highlighted</mark>.
-This is not a mark: ===highlight=== or == highlight ==</p>
+```javascript
+const processor = unified()
+  .use(remarkParse)
+  .use(remarkMarkPlus)
+  .use(remarkRehype)
+  .use(rehypeStringify)
+
+const markdown = 'This is ==highlighted text==.'
+const html = processor.processSync(markdown).toString()
+
+console.log(html) // <p>This is <mark>highlighted text</mark>.</p>
 ```
 
-## API
+A note on remark plugins:
+This plugin is a modern ESM-only remark plugin. If you are using it in a CommonJS project, you might need to use dynamic `import()`.
 
-This package exports no identifiers. The default export is `remarkMarkPlus`.
+## Internals & Extensibility
 
-### `unified().use(remarkMarkPlus)`
+This plugin is built following the modern `unified` architecture and leverages `micromark` for tokenization and `mdast-util` for AST transformations. This ensures compatibility with the latest `remark` ecosystem.
 
-Configures `unified` to support the `==text==` syntax. There are no options.
+### Using the Micromark extension
 
-## Security
+If you only need to parse the `==mark==` syntax at the token level (e.g., for syntax highlighting or other tools that work with `micromark`), you can use the Micromark extension directly:
 
-Use of `remark-mark-plus` does not involve parsing HTML so there are no openings for XSS vectors.
-However, if you are using `rehype-stringify` with `allowDangerousHtml: true`, ensure that the input Markdown is trusted, as this could allow arbitrary HTML if other plugins are involved.
+```javascript
+import {micromark} from 'micromark'
+import {markSyntax, types as markTokenTypes} from 'remark-mark-plus/micromark-syntax' // Adjust path if using locally
 
-## Development
+const html = micromark('==text==', {
+  extensions: [markSyntax()]
+})
 
-To contribute to this project, please follow these steps:
+console.log(html) // Potentially just text if no HTML compiler, or tokens if configured
+// To get HTML, you'd typically use fromMarkdown and toHast with the extension
+```
+(Note: The direct micromark to HTML output for custom extensions requires further setup, typically involving `fromMarkdown` and `toHast` with the extension's handlers if you want an HTML string directly from `micromark` for this custom syntax. The primary use of `micromark` extensions is within the `remark`/`unified` pipeline.)
 
-1.  Clone the repository.
-2.  Install dependencies with `npm install`.
-3.  Run tests with `npm test`.
-4.  Build the project with `npm run build`.
-
-Please ensure that your code adheres to the existing linting rules and that all tests pass before submitting a pull request.
 
 ## License
 
-[MIT][license] © [Adam Twardoch](https://github.com/twardoch) and [Contributors][contributors]
+[MIT][license] © [Zeste de Savoir][zds]
 
 <!-- Definitions -->
 
-[license]: LICENSE
+[license]: https://github.com/twardoch/remark-mark-plus/blob/master//LICENSE
+
 [npm]: https://www.npmjs.com/package/remark-mark-plus
-[mdast]: https://github.com/syntax-tree/mdast
+
+[mdast]: https://github.com/syntax-tree/mdast/blob/master/readme.md
+
 [remark]: https://github.com/remarkjs/remark
+
 [rehype]: https://github.com/rehypejs/rehype
+
 [parent]: https://github.com/syntax-tree/unist#parent
-[unified]: https://unifiedjs.com/
-[micromark]: https://github.com/micromark/micromark
-[contributors]: https://github.com/twardoch/remark-mark-plus/graphs/contributors

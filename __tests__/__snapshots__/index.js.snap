@@ -1,0 +1,5 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`parses mark parses a big fixture 1`] = `undefined`;
+
+exports[`to markdown 1`] = `undefined`;

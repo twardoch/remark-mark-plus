@@ -5,8 +5,7 @@
       {
         "targets": {
           "node": "18"
-        },
-        "modules": false // Important for ESM to let native Node handle modules
+        }
       }
     ]
   ],
