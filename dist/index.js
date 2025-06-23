@@ -1,72 +1,58 @@
-'use strict';
+"use strict";
 
-var whitespace = require('is-whitespace-character');
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = remarkMarkPlus;
+var _micromarkSyntax = require("./lib/micromark-syntax.js");
+var _mdastUtilHandlers = require("./lib/mdast-util-handlers.js");
+// src/index.js
 
-var C_PIPE = '=';
-var DOUBLE = '==';
+/**
+ * @typedef {import('unified').Processor} Processor
+ */
 
-function locator(value, fromIndex) {
-  var index = value.indexOf(DOUBLE, fromIndex);
-  return index;
+/**
+ * Plugin to support GFM-like mark ==highlighted text==.
+ *
+ * @this {Processor}
+ * @param {void | Options | undefined} [options={}]
+ *   Configuration (optional).
+ * @returns {undefined}
+ *   Nothing.
+ */
+function remarkMarkPlus(options = {}) {
+  const data = this.data();
+  function add(field, value) {
+    const list = /** @type {unknown[]} */data[field] || (data[field] = []);
+    list.push(value);
+  }
+
+  // Add the micromark extension for parsing "=="
+  add('micromarkExtensions', (0, _micromarkSyntax.markSyntax)());
+
+  // Add the mdast utility for converting from markdown AST (tokens) to mdast (nodes)
+  add('fromMarkdownExtensions', _mdastUtilHandlers.markFromMarkdown);
+
+  // Add the mdast utility for converting from mdast (nodes) to markdown AST (tokens)
+  add('toMarkdownExtensions', _mdastUtilHandlers.markToMarkdown);
 }
 
-function plugin() {
-  function inlineTokenizer(eat, value, silent) {
-    if (!this.options.gfm || value.substr(0, 2) !== DOUBLE || value.substr(0, 4) === DOUBLE + DOUBLE || whitespace(value.charAt(2))) {
-      return;
-    }
-
-    var character = '';
-    var previous = '';
-    var preceding = '';
-    var subvalue = '';
-    var index = 1;
-    var length = value.length;
-    var now = eat.now();
-    now.column += 2;
-    now.offset += 2;
-
-    while (++index < length) {
-      character = value.charAt(index);
-
-      if (character === C_PIPE && previous === C_PIPE && (!preceding || !whitespace(preceding))) {
-
-        /* istanbul ignore if - never used (yet) */
-        if (silent) return true;
-
-        return eat(DOUBLE + subvalue + DOUBLE)({
-          type: 'mark',
-          children: this.tokenizeInline(subvalue, now),
-          data: {
-            hName: 'mark'
-          }
-        });
-      }
-
-      subvalue += previous;
-      preceding = previous;
-      previous = character;
-    }
-  }
-  inlineTokenizer.locator = locator;
-
-  var Parser = this.Parser;
-
-  // Inject inlineTokenizer
-  var inlineTokenizers = Parser.prototype.inlineTokenizers;
-  var inlineMethods = Parser.prototype.inlineMethods;
-  inlineTokenizers.mark = inlineTokenizer;
-  inlineMethods.splice(inlineMethods.indexOf('text'), 0, 'mark');
-
-  var Compiler = this.Compiler;
-
-  // Stringify
-  if (Compiler) {
-    var visitors = Compiler.prototype.visitors;
-    visitors.mark = function (node) {
-      return '==' + this.all(node).join('') + '==';
-    };
-  }
-}
-
-module.exports = plugin;
+// For TypeScript, you might want to declare the new node type:
+//
+// import {Parent} from 'unist'
+//
+// export interface Mark extends Parent {
+//   type: 'mark'
+//   children: PhrasingContent[]
+// }
+//
+// declare module 'mdast' {
+//   interface PhrasingContentMap {
+//     mark: Mark
+//   }
+// }
+//
+// This helps TypeScript understand the new 'mark' node type.
+// Since this is a .js project, this is just a comment.
+//# sourceMappingURL=index.js.map
