@@ -1,0 +1,1383 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+__tests__/
+  __snapshots__/
+    index.js.snap
+  index.js
+.github/
+  workflows/
+    ci.yml
+src/
+  lib/
+    mdast-util-handlers.js
+    micromark-syntax.js
+  index.js
+.babelrc
+.eslintignore
+.eslintrc.json
+.gitignore
+.npmignore
+CHANGELOG.md
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+LICENSE
+package.json
+PLAN.md
+README.md
+TODO.md
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="__tests__/__snapshots__/index.js.snap">
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`parses mark parses a big fixture 1`] = `undefined`;
+
+exports[`to markdown 1`] = `undefined`;
+</file>
+
+<file path="__tests__/index.js">
+import dedent from 'dedent'
+import {unified} from 'unified'
+import reParse from 'remark-parse'
+import remarkStringify from 'remark-stringify'
+import rehypeStringify from 'rehype-stringify'
+import remark2rehype from 'remark-rehype'
+
+import plugin from '../src/index.js'
+// import {h} from 'hastscript' // Not used
+
+
+const render = text => unified()
+  .use(reParse, {
+    footnotes: true,
+  })
+  .use(plugin)
+  .use(remark2rehype, {
+    handlers: {
+      mark: (state, node) => {
+        // In mdast-util-to-hast, 'state' is 'h', and 'node' is 'node'.
+        // The handler signature is (h, node, parent)
+        // For remark-rehype, it might pass state differently or wrap it.
+        // Let's use a common signature found in examples: (h, node)
+        // where h is the hastscript hyperscript function.
+        // remark-rehype passes state (which has `all` method) and node.
+        // The actual HAST creator `h` is often bound or accessible via `state.h`.
+        // However, many examples use `hastscript`'s `h` directly.
+        // For remark-rehype, the `state` object is the `MdastHastTransformer` instance.
+        // `state.all(node)` processes children.
+        return {
+          type: 'element',
+          tagName: 'mark',
+          properties: {},
+          children: state.all(node),
+        }
+      },
+    },
+  })
+  .use(rehypeStringify)
+  .processSync(text)
+
+const fixture = dedent`
+  Blabla ==ok== kxcvj ==ok foo== sdff
+
+  sdf ==== df
+
+  sfdgs | | dfg == dgsg | qs
+
+  With two equals signs: \==key== you'll get ==key==.
+
+  It can contain inline markdown:
+
+  * ==hell[~~o~~](#he)?==
+
+  It cannot contain blocks:
+
+  * ==hello: [[secret]]?==
+`
+
+
+describe('parses mark', () => {
+  it('parses a big fixture', () => {
+    const contents = render(fixture).value
+    expect(contents).toMatchSnapshot()
+  })
+
+  it('escapes the start marker', () => {
+    const contents = render(dedent`
+      ==one== \==escaped== ==three== \===four=== ==five==
+    `).value
+    expect(contents).toContain('==escaped==') // This means \==escaped== should render as literal ==escaped==
+    expect(contents).toContain('=<mark>four</mark>') // This means \===four=== should render as literal = followed by <mark>four</mark>
+  })
+
+  it('handles internal equals signs correctly (==a=b==)', () => {
+    const text = '==a=b=='
+    const contents = render(text).value
+    expect(contents).toBe('<p><mark>a=b</mark></p>')
+
+    const markdownContents = unified()
+      .use(reParse)
+      .use(remarkStringify)
+      .use(plugin)
+      .processSync(text)
+      .toString()
+    expect(markdownContents).toBe('==a=b==')
+  })
+})
+
+test('to markdown', () => {
+  const contents = unified()
+    .use(reParse)
+    .use(remarkStringify)
+    .use(plugin)
+    .processSync(fixture)
+    .toString()
+
+  expect(contents).toMatchSnapshot()
+})
+</file>
+
+<file path=".github/workflows/ci.yml">
+name: Node.js CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x] # Test against current LTS versions
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run ESLint
+      run: npm run pretest # pretest script runs eslint
+
+    - name: Run tests
+      run: npm test
+
+    - name: Build project (optional, if build artifacts are needed or to check build)
+      run: npm run build
+</file>
+
+<file path="src/lib/mdast-util-handlers.js">
+/**
+ * @fileoverview
+ *   mdast-util extensions to support GFM-like mark (`==highlighted==`).
+ *   Defines how to transform micromark tokens into mdast (fromMarkdown)
+ *   and how to serialize mdast nodes back to markdown (toMarkdown).
+ */
+
+// src/lib/mdast-util-handlers.js
+import {types as markTokenTypes} from './micromark-syntax.js' // Our custom token type names
+
+/**
+ * Extension for `mdast-util-from-markdown` to handle mark tokens.
+ * @type {import('mdast-util-from-markdown').Extension}
+ */
+export const markFromMarkdown = {
+  enter: {
+    [markTokenTypes.mark] (token) {
+      this.enter({type: 'mark', children: []}, token)
+    },
+  },
+  exit: {
+    [markTokenTypes.mark] (token) {
+      this.exit(token)
+    },
+    // markText is handled by the default text processing mechanism within the parent 'mark' node.
+    // markSequence tokens are structural and typically don't need specific exit handlers
+    // unless they contribute data to the mdast node.
+  },
+}
+
+/** @type {import('mdast-util-to-markdown').Options['handlers']} */
+const markToMarkdownHandlers = {
+  mark: handleMark,
+}
+
+/**
+ * @type {import('mdast-util-to-markdown').Handle}
+ * @param {any} node
+ */
+function handleMark (node, _, context, safeOptions) {
+  const exit = context.enter('mark')
+  // `track` is important for `unsafe` patterns if content could break out.
+  // For simple "==", it's mainly about getting the content.
+  const value = context.containerPhrasing(node, {
+    ...safeOptions,
+    before: '=', // Unsafe if content starts with =
+    after: '=', // Unsafe if content ends with =
+  })
+  exit()
+  return `==${value}==`
+}
+
+/**
+ * Extension for `mdast-util-to-markdown` to serialize mdast `mark` nodes.
+ * @type {import('mdast-util-to-markdown').Options}
+ */
+export const markToMarkdown = {
+  handlers: markToMarkdownHandlers,
+  // `unsafe` is for characters that are unsafe *at the start or end of
+  // what is currently being serialized*.
+  // When serializing the content of a `mark` node, `containerPhrasing`
+  // with `before`/`after` handles local context.
+  // The top-level `unsafe` patterns are more about how `==` itself might
+  // be problematic in broader contexts, or if the content itself could be `==`.
+  // For `==value==`, the main concern is if `value` starts/ends with `=` or contains `==`.
+  // If `value` itself contains `==`, `containerPhrasing` won't automatically
+  // escape it unless an escape is defined.
+  // This simple version assumes `value` doesn't contain unescaped `==`.
+  unsafe: [
+    // If a value starts with `==` it would form `====`.
+    // If a value ends with `==` it would form `====`.
+    // These are typically handled by the parser not recognizing `====` as a mark.
+    // The `before` and `after` in `containerPhrasing` given to `handleMark`
+    // already signal that the content is wrapped by `=`.
+  ],
+  join: [joinMark],
+}
+
+/** @type {import('mdast-util-to-markdown').Join} */
+function joinMark (left, right, parent, context) {
+  // This function influences how adjacent 'mark' nodes or 'mark' nodes and other
+  // phrasing content are joined during serialization.
+  // Returning `true` allows default joining behavior (e.g., adding a space
+  // between words, no space next to punctuation).
+  // Specific rules could prevent joining (return `false`) or force line breaks.
+  // For a simple 'mark' node, default behavior is usually sufficient.
+  return true
+}
+</file>
+
+<file path="src/lib/micromark-syntax.js">
+/**
+ * @fileoverview
+ *   Micromark syntax extension to support GFM-like mark (`==highlighted==`).
+ */
+
+// src/lib/micromark-syntax.js
+import {codes} from 'micromark-util-symbol'
+import {markdownLineEnding, markdownSpace} from 'micromark-util-character'
+
+const MARKER_CODE = codes.equalsTo
+const SEQUENCE_SIZE = 2
+
+/**
+ * Token types for the mark syntax.
+ * @enum {string}
+ */
+export const types = {
+  mark: 'mark', // The main wrapping token for a mark node `==text==`
+  markSequence: 'markSequence', // Token for the `==` sequence
+  markText: 'markText', // Token for the text content within marks
+}
+
+/**
+ * Micromark extension for GFM-like mark syntax.
+ *
+ * @returns {import('micromark-util-types').Extension}
+ *   The Micromark extension.
+ */
+export function markSyntax () {
+  return {
+    text: {[MARKER_CODE]: {tokenize: tokenizeMark, partial: true}},
+  }
+}
+
+/** @type {import('micromark-util-types').Tokenizer} */
+function tokenizeMark (effects, ok, nok) {
+  let closeSeqSize = 0
+
+  return start
+
+  /** @type {import('micromark-util-types').State} */
+  function start (code) {
+    // `code` is the first suspected marker character.
+    // Tokenizer is invoked when `MARKER_CODE` is seen.
+    effects.enter(types.markSequence)
+    effects.consume(code) // Consume the first '='
+    return insideOpeningSequence
+  }
+
+  /** @type {import('micromark-util-types').State} */
+  function insideOpeningSequence (code) {
+    // `code` is the character *after* the first consumed '='.
+    if (code === MARKER_CODE) { // This is the second '='
+      effects.consume(code)
+      effects.exit(types.markSequence) // Successfully consumed "=="
+      return checkAfterOpening // Next state will get char after "=="
+    }
+    // The character after the first "=" was not another "=".
+    // So, the first "=" was not part of our "==" sequence.
+    effects.exit(types.markSequence) // Exit the sequence for the single initial "=".
+    return nok(code) // Let other tokenizers handle this `code`. Micromark will backtrack.
+  }
+
+  /** @type {import('micromark-util-types').State} */
+  function checkAfterOpening (code) {
+    // `code` here is the character *immediately after* the opening "==".
+    // Disallow "===", "==\s", or "==" at EOF.
+    if (code === MARKER_CODE || markdownSpace(code) || code === null) {
+      return nok(code)
+    }
+    // Valid opening, proceed to content
+    effects.enter(types.mark) // Enter the main "mark" token
+    effects.enter(types.markText) // Enter the "markText" token for content
+    return contentText(code) // Start consuming content with the current valid character
+  }
+
+  /** @type {import('micromark-util-types').State} */
+  function contentText (code) {
+    if (code === codes.eof || markdownLineEnding(code)) {
+      // Unterminated or newline breaks mark
+      effects.exit(types.markText)
+      effects.exit(types.mark)
+      return nok(code)
+    }
+
+    if (code === MARKER_CODE) {
+      // Potential closing sequence
+      effects.exit(types.markText)
+      effects.enter(types.markSequence) // Potential closing sequence
+      closeSeqSize = 0
+      return closingSequence(code)
+    }
+
+    effects.consume(code)
+    return contentText
+  }
+
+  /** @type {import('micromark-util-types').State} */
+  function closingSequence (code) {
+    if (code === MARKER_CODE && closeSeqSize < SEQUENCE_SIZE) {
+      effects.consume(code)
+      closeSeqSize++
+      return closingSequence
+    }
+
+    if (closeSeqSize === SEQUENCE_SIZE) {
+      // Valid "==" closing sequence.
+      // Note: GFM spec for strikethrough (similar syntax) disallows preceding whitespace
+      // before the closing marker. This version does not implement that rule;
+      // e.g., `==text ==` will parse as marked text.
+
+      // Regarding `==a =b==` (single '=' consumed by closingSequence and then failing):
+      // TODO: Verify with tests. Theory suggests `partial:true` + `nok` handles this correctly.
+
+      effects.exit(types.markSequence) // Exit closing "=="
+      effects.exit(types.mark) // Exit main "mark"
+      return ok(code)
+    }
+
+    // Not a "==". This means the first "=" (that started the potential closing sequence)
+    // was actually part of the content.
+    // `nok` allows micromark to backtrack and re-parse that "=" as part of `markText`,
+    // thanks to `partial: true` on the tokenizer.
+    return nok(code)
+  }
+}
+</file>
+
+<file path="src/index.js">
+// src/index.js
+import {markSyntax} from './lib/micromark-syntax.js'
+import {markFromMarkdown, markToMarkdown} from './lib/mdast-util-handlers.js'
+
+/**
+ * @typedef {import('unified').Processor} Processor
+ */
+
+/**
+ * Plugin to support GFM-like mark ==highlighted text==.
+ *
+ * @this {Processor}
+ * @param {void | Options | undefined} [options={}]
+ *   Configuration (optional).
+ * @returns {undefined}
+ *   Nothing.
+ */
+export default function remarkMarkPlus (options = {}) {
+  const data = this.data()
+
+  function add (field, value) {
+    const list = /** @type {unknown[]} */ (data[field] || (data[field] = []))
+    list.push(value)
+  }
+
+  // Add the micromark extension for parsing "=="
+  add('micromarkExtensions', markSyntax())
+
+  // Add the mdast utility for converting from markdown AST (tokens) to mdast (nodes)
+  add('fromMarkdownExtensions', markFromMarkdown)
+
+  // Add the mdast utility for converting from mdast (nodes) to markdown AST (tokens)
+  add('toMarkdownExtensions', markToMarkdown)
+}
+
+// For TypeScript, you might want to declare the new node type:
+//
+// import {Parent} from 'unist'
+//
+// export interface Mark extends Parent {
+//   type: 'mark'
+//   children: PhrasingContent[]
+// }
+//
+// declare module 'mdast' {
+//   interface PhrasingContentMap {
+//     mark: Mark
+//   }
+// }
+//
+// This helps TypeScript understand the new 'mark' node type.
+// Since this is a .js project, this is just a comment.
+</file>
+
+<file path=".babelrc">
+{
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "targets": {
+          "node": "18"
+        }
+      }
+    ]
+  ],
+  "plugins": []
+}
+</file>
+
+<file path=".eslintignore">
+coverage
+public/*
+packages/*/dist/*
+dist/
+</file>
+
+<file path=".eslintrc.json">
+{
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "env": {
+    "es6": true,
+    "node": true,
+    "jest/globals": true
+  },
+  "plugins": [
+    "jest"
+  ],
+  "extends": [
+    "eslint:recommended",
+    "plugin:jest/recommended"
+  ],
+  "globals": {
+    "document": false,
+    "navigator": false,
+    "window": false
+  },
+  "rules": {
+    "accessor-pairs": "error",
+    "array-bracket-spacing": ["warn", "never"],
+    "arrow-spacing": ["error", {"before": true, "after": true}],
+    "block-spacing": ["error", "always"],
+    "brace-style": ["error", "1tbs", {"allowSingleLine": true}],
+    "camelcase": ["error", {"properties": "never"}],
+    "comma-dangle": ["warn", "always-multiline"],
+    "comma-spacing": ["error", {"before": false, "after": true}],
+    "comma-style": ["error", "last"],
+    "computed-property-spacing": ["error", "never"],
+    "constructor-super": "error",
+    "curly": ["error", "multi-line"],
+    "dot-location": ["error", "property"],
+    "eol-last": ["error", "always"],
+    "eqeqeq": ["error", "allow-null"],
+    "func-call-spacing": ["error", "never"],
+    "callback-return": ["warn", ["callback", "cb", "done"]],
+    "handle-callback-err": ["error", "^(err|error)$"],
+    "indent": ["error", 2, {
+      "SwitchCase": 1,
+      "VariableDeclarator": 1,
+      "outerIIFEBody": 1,
+      "FunctionDeclaration": {
+        "parameters": 1,
+        "body": 1
+      },
+      "FunctionExpression": {
+        "parameters": 1,
+        "body": 1
+      }
+    }],
+    "key-spacing": ["error", {"beforeColon": false, "afterColon": true}],
+    "keyword-spacing": ["error", {"before": true, "after": true}],
+    "linebreak-style": ["error", "unix"],
+    "max-len": ["error", {
+      "code": 100,
+      "ignoreRegExpLiterals": true,
+      "ignoreStrings": true,
+      "ignoreTemplateLiterals": true,
+      "ignoreUrls": true
+    }],
+    "new-cap": ["error", {"newIsCap": true, "capIsNew": false}],
+    "new-parens": "error",
+    "newline-per-chained-call": ["error", {"ignoreChainWithDepth": 4}],
+    "no-array-constructor": "error",
+    "no-caller": "error",
+    "no-class-assign": "error",
+    "no-cond-assign": "error",
+    "no-console": ["warn", {"allow": ["error", "warn"]}],
+    "no-const-assign": "error",
+    "no-constant-condition": ["error", {"checkLoops": false}],
+    "no-control-regex": "error",
+    "no-debugger": "error",
+    "no-delete-var": "error",
+    "no-dupe-args": "error",
+    "no-dupe-class-members": "error",
+    "no-dupe-keys": "error",
+    "no-duplicate-case": "error",
+    "no-duplicate-imports": "error",
+    "no-empty-character-class": "error",
+    "no-empty-pattern": "error",
+    "no-eval": "error",
+    "no-ex-assign": "error",
+    "no-extend-native": "error",
+    "no-extra-bind": "error",
+    "no-extra-boolean-cast": "error",
+    "no-extra-parens": ["error", "functions"],
+    "no-fallthrough": "error",
+    "no-floating-decimal": "error",
+    "no-func-assign": "error",
+    "no-global-assign": "error",
+    "no-implied-eval": "error",
+    "no-inner-declarations": ["error", "functions"],
+    "no-invalid-regexp": "error",
+    "no-irregular-whitespace": "error",
+    "no-iterator": "error",
+    "no-label-var": "error",
+    "no-labels": ["error", {"allowLoop": false, "allowSwitch": false}],
+    "no-lone-blocks": "error",
+    "no-lonely-if": "error",
+    "no-mixed-operators": ["error", {
+      "groups": [
+        ["+", "-", "*", "/", "%", "**"],
+        ["&", "|", "^", "~", "<<", ">>", ">>>"],
+        ["==", "!=", "===", "!==", ">", ">=", "<", "<="],
+        ["&&", "||"],
+        ["in", "instanceof"]
+      ],
+      "allowSamePrecedence": false
+    }],
+    "no-mixed-spaces-and-tabs": "error",
+    "no-multi-spaces": "error",
+    "no-multi-str": "error",
+    "no-multiple-empty-lines": ["error", {"max": 2}],
+    "no-native-reassign": "error",
+    "no-negated-in-lhs": "error",
+    "no-nested-ternary": "error",
+    "no-new": "error",
+    "no-new-func": "error",
+    "no-new-object": "error",
+    "no-new-require": "error",
+    "no-new-symbol": "error",
+    "no-new-wrappers": "error",
+    "no-obj-calls": "error",
+    "no-octal": "error",
+    "no-octal-escape": "error",
+    "no-path-concat": "error",
+    "no-proto": "error",
+    "no-redeclare": "error",
+    "no-regex-spaces": "error",
+    "no-return-assign": ["error", "except-parens"],
+    "no-self-assign": "error",
+    "no-self-compare": "error",
+    "no-sequences": "error",
+    "no-shadow-restricted-names": "error",
+    "no-sparse-arrays": "error",
+    "no-tabs": "error",
+    "no-template-curly-in-string": "error",
+    "no-this-before-super": "error",
+    "no-throw-literal": "error",
+    "no-trailing-spaces": "error",
+    "no-undef": "error",
+    "no-undef-init": "error",
+    "no-unexpected-multiline": "error",
+    "no-unmodified-loop-condition": "error",
+    "no-unneeded-ternary": ["error", {"defaultAssignment": false}],
+    "no-unreachable": "error",
+    "no-unsafe-finally": "error",
+    "no-unsafe-negation": "error",
+    "no-unused-vars": ["error", {"vars": "all", "args": "none", "ignoreRestSiblings": true }],
+    "no-useless-call": "error",
+    "no-useless-computed-key": "error",
+    "no-useless-constructor": "error",
+    "no-useless-escape": "error",
+    "no-useless-rename": "error",
+    "no-var": "error",
+    "no-whitespace-before-property": "error",
+    "no-with": "error",
+    "object-curly-spacing": ["warn", "never"],
+    "object-property-newline": ["error", {"allowMultiplePropertiesPerLine": true}],
+    "one-var": ["error", {"initialized": "never"}],
+    "operator-linebreak": ["error", "after", {"overrides": {"?": "before", ":": "before"}}],
+    "padded-blocks": ["off", "never"],
+    "prefer-template": "error",
+    "prefer-const": ["error", {"destructuring": "any", "ignoreReadBeforeAssign": true}],
+    "quotes": ["error", "single", {"avoidEscape": true, "allowTemplateLiterals": true}],
+    "rest-spread-spacing": ["error", "never"],
+    "semi": ["error", "never"],
+    "semi-spacing": ["error", {"before": false, "after": true}],
+    "space-before-blocks": ["error", "always"],
+    "space-before-function-paren": ["error", "always"],
+    "space-in-parens": ["error", "never"],
+    "space-infix-ops": "error",
+    "space-unary-ops": ["error", {"words": true, "nonwords": false}],
+    "spaced-comment": ["error", "always",
+      {"line": {"markers": ["*package", "!", ","]}, "block": {"balanced": true, "markers": ["*package", "!", ","], "exceptions": ["*"]}}
+    ],
+    "template-curly-spacing": ["error", "never"],
+    "unicode-bom": ["error", "never"],
+    "use-isnan": "error",
+    "valid-typeof": "error",
+    "wrap-iife": ["error", "any", {"functionPrototypeMethods": true}],
+    "yield-star-spacing": ["error", "both"],
+    "yoda": ["error", "never"]
+  }
+}
+</file>
+
+<file path=".gitignore">
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Directory for instrumented libs generated by jscoverage/JSCover
+lib-cov
+
+# Coverage directory used by tools like istanbul
+coverage
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
+.grunt
+
+# Bower dependency directory (https://bower.io/)
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons (https://nodejs.org/api/addons.html)
+build/Release
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# TypeScript v1 declaration files
+typings/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+.env.test
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+
+# next.js build output
+.next
+
+# nuxt.js build output
+.nuxt
+
+# vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+</file>
+
+<file path=".npmignore">
+/index.js
+/__tests__
+/.npmignore
+/coverage
+*.log
+/src
+</file>
+
+<file path="CHANGELOG.md">
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Changed
+- Refined `package.json` by removing duplicate contributors.
+- Corrected a broken license link in `README.md`.
+- Removed unused variables and clarified comments in `src/lib/micromark-syntax.js` and `src/lib/mdast-util-handlers.js`.
+- Updated test setup in `__tests__/index.js` to correctly access VFile content and add a HAST handler for `mark` nodes during testing.
+
+### Added
+- New test case in `__tests__/index.js` for inputs like `==a=b==`.
+
+### Fixed
+- ESLint configuration issues that prevented tests from running initially.
+
+### Known Issues (Tests Failing)
+- **Empty Marks Bug:** Highlighted content is lost (e.g., `==text==` results in an empty mark). `mark` mdast nodes do not appear to capture their child text content. This leads to empty `<mark></mark>` tags in HTML (when a HAST handler is provided) and `====` in Markdown serialization.
+- **Tokenizer Bug for Complex Inputs:** Inputs like `==a=b==` are not parsed as marks but are treated as literal text, due to a logic flaw in the `micromark-syntax.js` tokenizer's handling of closing sequences.
+</file>
+
+<file path="CODE_OF_CONDUCT.md">
+# Contributor Covenant Code of Conduct
+
+## Our Pledge
+
+We as members, contributors, and leaders pledge to make participation in our
+community a harassment-free experience for everyone, regardless of age, body
+size, visible or invisible disability, ethnicity, sex characteristics, gender
+identity and expression, level of experience, education, socio-economic status,
+nationality, personal appearance, race, religion, or sexual identity
+and orientation.
+
+We pledge to act and interact in ways that contribute to an open, welcoming,
+diverse, inclusive, and healthy community.
+
+## Our Standards
+
+Examples of behavior that contributes to a positive environment for our
+community include:
+
+* Demonstrating empathy and kindness toward other people
+* Being respectful of differing opinions, viewpoints, and experiences
+* Giving and gracefully accepting constructive feedback
+* Accepting responsibility and apologizing to those affected by our mistakes,
+  and learning from the experience
+* Focusing on what is best not just for us as individuals, but for the
+  overall community
+
+Examples of unacceptable behavior include:
+
+* The use of sexualized language or imagery, and sexual attention or
+  advances of any kind
+* Trolling, insulting or derogatory comments, and personal or political attacks
+* Public or private harassment
+* Publishing others' private information, such as a physical or email
+  address, without their explicit permission
+* Other conduct which could reasonably be considered inappropriate in a
+  professional setting
+
+## Enforcement Responsibilities
+
+Community leaders are responsible for clarifying and enforcing our standards of
+acceptable behavior and will take appropriate and fair corrective action in
+response to any behavior that they deem inappropriate, threatening, offensive,
+or harmful.
+
+Community leaders have the right and responsibility to remove, edit, or reject
+comments, commits, code, wiki edits, issues, and other contributions that are
+not aligned to this Code of Conduct, and will communicate reasons for moderation
+decisions when appropriate.
+
+## Scope
+
+This Code of Conduct applies within all community spaces, and also applies when
+an individual is officially representing the community in public spaces.
+Examples of representing our community include using an official e-mail address,
+posting via an official social media account, or acting as an appointed
+representative at an online or offline event.
+
+## Enforcement
+
+Instances of abusive, harassing, or otherwise unacceptable behavior may be
+reported to the community leaders responsible for enforcement at
+[INSERT CONTACT METHOD].
+All complaints will be reviewed and investigated promptly and fairly.
+
+All community leaders are obligated to respect the privacy and security of the
+reporter of any incident.
+
+## Enforcement Guidelines
+
+Community leaders will follow these Community Impact Guidelines in determining
+the consequences for any action they deem in violation of this Code of Conduct:
+
+### 1. Correction
+
+**Community Impact**: Use of inappropriate language or other behavior deemed
+unprofessional or unwelcome in the community.
+
+**Consequence**: A private, written warning from community leaders, providing
+clarity around the nature of the violation and an explanation of why the
+behavior was inappropriate. A public apology may be requested.
+
+### 2. Warning
+
+**Community Impact**: A violation through a single incident or series
+of actions.
+
+**Consequence**: A warning with consequences for continued behavior. No
+interaction with the people involved, including unsolicited interaction with
+those enforcing the Code of Conduct, for a specified period of time. This
+includes avoiding interactions in community spaces as well as external channels
+like social media. Violating these terms may lead to a temporary or
+permanent ban.
+
+### 3. Temporary Ban
+
+**Community Impact**: A serious violation of community standards, including
+sustained inappropriate behavior.
+
+**Consequence**: A temporary ban from any sort of interaction or public
+communication with the community for a specified period of time. No public or
+private interaction with the people involved, including unsolicited interaction
+with those enforcing the Code of Conduct, is allowed during this period.
+Violating these terms may lead to a permanent ban.
+
+### 4. Permanent Ban
+
+**Community Impact**: Demonstrating a pattern of violation of community
+standards, including sustained inappropriate behavior, harassment of an
+individual, or aggression toward or disparagement of classes of individuals.
+
+**Consequence**: A permanent ban from any sort of public interaction within
+the community.
+
+## Attribution
+
+This Code of Conduct is adapted from the [Contributor Covenant][homepage],
+version 2.1, available at
+[https://www.contributor-covenant.org/version/2/1/code_of_conduct.html][v2.1].
+
+For answers to common questions about this code of conduct, see the FAQ at
+[https://www.contributor-covenant.org/faq][faq]. Translations are available at
+[https://www.contributor-covenant.org/translations][translations].
+
+[homepage]: https://www.contributor-covenant.org
+[v2.1]: https://www.contributor-covenant.org/version/2/1/code_of_conduct.html
+[faq]: https://www.contributor-covenant.org/faq
+[translations]: https://www.contributor-covenant.org/translations
+</file>
+
+<file path="CONTRIBUTING.md">
+# Contributing to remark-mark-plus
+
+First off, thank you for considering contributing to `remark-mark-plus`! Your help is appreciated.
+
+## How Can I Contribute?
+
+### Reporting Bugs
+
+If you find a bug, please ensure the bug was not already reported by searching on GitHub under [Issues](https://github.com/twardoch/remark-mark-plus/issues).
+
+If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/twardoch/remark-mark-plus/issues/new). Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample or an executable test case** demonstrating the expected behavior that is not occurring.
+
+### Suggesting Enhancements
+
+If you have an idea for an enhancement, feel free to open an issue to discuss it. Please provide a clear description of the enhancement and why it would be beneficial.
+
+### Pull Requests
+
+1.  Fork the repo and create your branch from `main` (or the most recent development branch).
+2.  If you've added code that should be tested, add tests.
+3.  If you've changed APIs, update the documentation.
+4.  Ensure the test suite passes (`npm test`).
+5.  Make sure your code lints (`npm run pretest` or ensure ESLint passes).
+6.  Issue that pull request!
+
+## Development Setup
+
+To get started with development:
+
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/twardoch/remark-mark-plus.git
+    cd remark-mark-plus
+    ```
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  The `prepare` script (which runs on `npm install`) will automatically build the project. To build manually:
+    ```bash
+    npm run build
+    ```
+4.  Run tests:
+    ```bash
+    npm test
+    ```
+5.  Lint code:
+    ```bash
+    npm run pretest
+    ```
+    (This is automatically run before tests too)
+
+## Code Style
+
+This project uses ESLint to enforce code style. Please ensure your contributions adhere to the linting rules. You can check your code by running `npm run pretest`. Many issues can be automatically fixed by your editor's ESLint integration or by running ESLint with the `--fix` option where appropriate.
+
+We appreciate your contributions!
+</file>
+
+<file path="LICENSE">
+Copyright (c) 2019 Adam Twardoch (https://www.twardoch.com)
+Copyright (c) Zeste de Savoir (https://zestedesavoir.com)
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+</file>
+
+<file path="package.json">
+{
+    "author": "Adam Twardoch <adam+github@twardoch.com> (https://twardoch.github.io)",
+    "contributors": [
+        "Victor Felder <victor@draft.li> (https://draft.li)",
+        "Sébastien <contact@enconn.fr> (AmarOk)",
+        "François <perso@francoisdambrine.me> (artragis)"
+    ],
+    "type": "module",
+    "bugs": {
+        "url": "https://github.com/twardoch/remark-mark-plus/issues"
+    },
+    "dependencies": {},
+    "devDependencies": {
+        "@babel/cli": "^7.23.4",
+        "@babel/core": "^7.23.7",
+        "@babel/preset-env": "^7.23.8",
+        "cross-env": "^7.0.3",
+        "del": "^7.1.0",
+        "del-cli": "^5.1.0",
+        "eslint": "^8.56.0",
+        "eslint-plugin-jest": "^27.6.3",
+        "jest": "^29.7.0",
+        "mdast-util-from-markdown": "^2.0.0",
+        "mdast-util-to-markdown": "^2.1.0",
+        "micromark-factory-whitespace": "^2.0.0",
+        "micromark-util-symbol": "^2.0.0",
+        "micromark-util-types": "^2.0.0",
+        "rehype-stringify": "^10.0.0",
+        "remark-parse": "^11.0.0",
+        "remark-rehype": "^11.1.0",
+        "remark-stringify": "^11.0.0",
+        "unified": "^11.0.4"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "files": [
+        "LICENSE",
+        "dist",
+        "src",
+        "README.md"
+    ],
+    "exports": {
+        ".": "./dist/index.js",
+        "./micromark-syntax": "./dist/lib/micromark-syntax.js",
+        "./package.json": "./package.json"
+    },
+    "homepage": "https://github.com/twardoch/remark-mark-plus#readme",
+    "keywords": [
+        "remark",
+        "remark-plugin",
+        "markdown",
+        "gfm",
+        "unified",
+        "micromark",
+        "mdast",
+        "mark"
+    ],
+    "license": "MIT",
+    "main": "dist/index.js",
+    "name": "remark-mark-plus",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/twardoch/remark-mark-plus.git"
+    },
+    "scripts": {
+        "build": "del-cli dist && cross-env BABEL_ENV=production babel src --out-dir dist --source-maps",
+        "coverage": "jest --coverage",
+        "prepare": "npm run build",
+        "pretest": "eslint . --ext .js,.mjs",
+        "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest"
+    },
+    "version": "1.0.21",
+    "description": "This plugin parses ==custom Markdown syntax== to the HTML `<mark>` element. It adds a new node type to the [mdast](https://github.com/syntax-tree/mdast/blob/master/readme.md) produced by [remark](https://github.com/remarkjs/remark): `mark` and stringifies to HTML via [rehype](https://github.com/rehypejs/rehype) as `<mark>`."
+}
+</file>
+
+<file path="PLAN.md">
+1.  **Project Setup & Initial Cleanup:**
+    *   Create `PLAN.md` with this detailed plan.
+    *   Create `TODO.md` with a checklist summary.
+    *   Create an empty `CHANGELOG.md`.
+
+2.  **`package.json` Refinements:**
+    *   Remove the duplicate "Victor Felder" entry from `contributors`.
+    *   Verify all dependencies in `devDependencies` are necessary and up-to-date. For MVP, we'll assume they are mostly fine unless a glaring issue is found. (Deferring major dependency updates unless strictly needed for a bug).
+
+3.  **`README.md` Corrections:**
+    *   Fix the broken license link (`master//LICENSE` to `master/LICENSE`).
+    *   Review for any other typos or outdated information. Ensure clarity, especially around the direct use of `micromark-syntax`.
+
+4.  **`src/lib/micromark-syntax.js` Review and Simplification:**
+    *   Remove commented-out unused variables (`self`, `openSeqSize`, `textStartPoint`).
+    *   Critically evaluate the tokenizer logic, especially `checkAfterOpening` and `closingSequence`:
+        *   The comment `// Disallow "===", "==\\s", or "==" at EOF.` in `checkAfterOpening` is crucial. Ensure the logic correctly implements this.
+        *   The comment `// Valid opening, proceed to content` should be verified.
+        *   Address the concern: `// This simplified version doesn't robustly check "no space before closing marker".` For MVP, decide if the current behavior is acceptable or if a simple check can be added without much complexity.
+        *   Address the concern: `// It also doesn't correctly handle "==a =b==" (single '=' consumed by closingSequence and fail).` and `// This means "==a=b==" would fail to parse the outer mark correctly.` Determine if this is a critical bug for MVP. If fixing is complex, document it as a known limitation. If simple, attempt a fix.
+    *   Clarify or remove comments that refer to "omitted for simplicity" if the current simple state is the intended MVP state.
+
+5.  **`src/lib/mdast-util-handlers.js` Review:**
+    *   Review `markFromMarkdown` exit handlers: if `markText` and `markSequence` exits are truly no-ops, consider removing them for conciseness or ensure comments clearly state why they are present (even if empty).
+    *   Review `joinMark`: The current `return true` is simple. Trim the extensive comments comparing it to `gfm-strikethrough` if this simplicity is maintained for MVP, or update comments if logic changes.
+
+6.  **Code Comments and Documentation:**
+    *   Ensure all public APIs (exports from `index.js`, `micromark-syntax.js`) are clearly commented (JSDoc).
+    *   Remove any misleading or outdated comments throughout the codebase.
+
+7.  **Testing:**
+    *   Run existing tests (`npm test`) to ensure no regressions are introduced by changes.
+    *   If tokenizer logic in `micromark-syntax.js` is changed (e.g., to handle `==a=b==` or spacing rules), add new test cases to `__tests__/index.js` to cover these scenarios.
+
+8.  **Build and Final Review:**
+    *   Run the build (`npm run build`) to ensure it completes successfully.
+    *   Review all changes for clarity, correctness, and adherence to MVP goals.
+    *   Update `CHANGELOG.md` with all significant changes.
+    *   Update `PLAN.md` and `TODO.md` to reflect completed steps.
+
+9.  **Submission:**
+    *   Commit changes with a descriptive message.
+</file>
+
+<file path="README.md">
+# remark-mark-plus
+
+This plugin parses `==custom Markdown syntax==` to the HTML `<mark>` element.
+It adds a new node type to the [mdast][mdast] produced by [remark][remark]: `mark`
+
+If you are using [rehype][rehype], the stringified HTML result will be `<mark>`.
+
+## Syntax
+
+```markdown
+Click ==File > Open== to open the file.
+```
+
+## AST (see [mdast][mdast] specification)
+
+The `Mark` node ([`Parent`][parent]) represents highlighted text. It is a phrasing content node.
+
+Its definition in TypeScript would be:
+```typescript
+import {Parent, PhrasingContent} from 'mdast'
+
+export interface Mark extends Parent {
+  type: 'mark'
+  children: PhrasingContent[]
+}
+
+// To make it available in the mdast content model:
+declare module 'mdast' {
+  interface PhrasingContentMap {
+    mark: Mark
+  }
+}
+```
+
+For example, the following markdown:
+
+`==File > Open==`
+
+Yields:
+
+```javascript
+{
+  type: 'mark',
+  children: [{
+    type: 'text',
+    value: 'File > Open'
+  }]
+}
+```
+
+## Rehype
+
+This plugin is compatible with [rehype][rehype]. `Mark` mdast nodes will become `<mark>contents</mark>`.
+
+## Installation
+
+[npm][npm]:
+
+```bash
+npm install remark-mark-plus
+```
+
+## Usage
+
+Dependencies:
+
+```javascript
+import {unified} from 'unified'
+import remarkParse from 'remark-parse'
+import remarkRehype from 'remark-rehype'
+import rehypeStringify from 'rehype-stringify'
+import remarkMarkPlus from 'remark-mark-plus' // or './path/to/src/index.js' if local
+```
+
+Usage:
+
+```javascript
+const processor = unified()
+  .use(remarkParse)
+  .use(remarkMarkPlus)
+  .use(remarkRehype)
+  .use(rehypeStringify)
+
+const markdown = 'This is ==highlighted text==.'
+const html = processor.processSync(markdown).toString()
+
+console.log(html) // <p>This is <mark>highlighted text</mark>.</p>
+```
+
+A note on remark plugins:
+This plugin is a modern ESM-only remark plugin. If you are using it in a CommonJS project, you might need to use dynamic `import()`.
+
+## Internals & Extensibility
+
+This plugin is built following the modern `unified` architecture and leverages `micromark` for tokenization and `mdast-util` for AST transformations. This ensures compatibility with the latest `remark` ecosystem.
+
+### Using the Micromark extension
+
+If you only need to parse the `==mark==` syntax at the token level (e.g., for syntax highlighting or other tools that work with `micromark`), you can use the Micromark extension directly:
+
+```javascript
+import {micromark} from 'micromark'
+import {markSyntax, types as markTokenTypes} from 'remark-mark-plus/micromark-syntax' // Adjust path if using locally
+
+const html = micromark('==text==', {
+  extensions: [markSyntax()]
+})
+
+console.log(html) // Potentially just text if no HTML compiler, or tokens if configured
+// To get HTML, you'd typically use fromMarkdown and toHast with the extension
+```
+(Note: The direct micromark to HTML output for custom extensions requires further setup, typically involving `fromMarkdown` and `toHast` with the extension's handlers if you want an HTML string directly from `micromark` for this custom syntax. The primary use of `micromark` extensions is within the `remark`/`unified` pipeline.)
+
+
+## License
+
+[MIT][license] © [Zeste de Savoir][zds]
+
+<!-- Definitions -->
+
+[license]: https://github.com/twardoch/remark-mark-plus/blob/master/LICENSE
+
+[npm]: https://www.npmjs.com/package/remark-mark-plus
+
+[mdast]: https://github.com/syntax-tree/mdast/blob/master/readme.md
+
+[remark]: https://github.com/remarkjs/remark
+
+[rehype]: https://github.com/rehypejs/rehype
+
+[parent]: https://github.com/syntax-tree/unist#parent
+</file>
+
+<file path="TODO.md">
+- [X] **Project Setup & Initial Cleanup:**
+    - [X] Create `PLAN.md` with this detailed plan.
+    - [X] Create `TODO.md` with a checklist summary.
+    - [X] Create an empty `CHANGELOG.md`.
+
+- [X] **`package.json` Refinements:**
+    - [X] Remove the duplicate "Victor Felder" entry from `contributors`.
+    - [X] Verify `devDependencies` (deferring updates for MVP).
+
+- [X] **`README.md` Corrections:**
+    - [X] Fix broken license link.
+    - [X] Review for typos/outdated info.
+
+- [X] **`src/lib/micromark-syntax.js` Review and Simplification:**
+    - [X] Remove commented-out unused variables.
+    - [X] Evaluate tokenizer logic (`checkAfterOpening`, `closingSequence`).
+        - [X] Verify `Disallow "===", "==\\s", or "==" at EOF.` (logic seems correct)
+        - [X] Address robust check for space before closing marker (decided to keep current simpler behavior for MVP).
+        - [ ] Address handling of cases like `==a=b==` (comments updated; to be verified in testing phase).
+    - [X] Clarify/remove "omitted for simplicity" comments.
+
+- [X] **`src/lib/mdast-util-handlers.js` Review:**
+    - [X] Review `markFromMarkdown` exit handlers (no changes needed).
+    - [X] Review `joinMark` and its comments (comments trimmed and clarified).
+
+- [X] **Code Comments and Documentation:**
+    - [X] Ensure JSDoc for public APIs (verified, looks good).
+    - [X] Remove misleading/outdated comments (addressed in previous steps and re-verified).
+
+- [X] **Testing:**
+    - [X] Run existing tests (they are failing, core issue: mdast `mark` nodes appear to have no children).
+    - [X] Add new test for `==a=b==` case (it fails, revealing a tokenizer bug where `==a=b==` is not parsed as a mark).
+    - [X] Decide on fixing tokenizer bug for `==a=b==` (DEFERRED for MVP, documented as known issue in CHANGELOG).
+    - [X] Prioritize fixing the "empty children" bug for mdast `mark` nodes (ATTEMPTED, bug remains, documented in CHANGELOG).
+
+- [X] **Build and Final Review:**
+    - [X] Run build (implicitly run by `npm install` and `npm test` pre-hooks, no separate build issues noted beyond test failures).
+    - [X] Review all changes (done throughout the process).
+    - [X] Update `CHANGELOG.md` (DONE).
+    - [X] Update `PLAN.md` and `TODO.md` (DONE for TODO, PLAN reflects current state).
+
+- [ ] **Submission:**
+    - [ ] Commit changes.
+</file>
+
+</files>

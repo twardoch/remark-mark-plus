@@ -83,6 +83,7 @@ describe('parses mark', () => {
       .use(plugin)
       .processSync(text)
       .toString()
+      .trim() // Trim trailing newline for consistent comparison
     expect(markdownContents).toBe('==a=b==')
   })
 })

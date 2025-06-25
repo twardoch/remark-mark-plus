@@ -4,7 +4,7 @@
  */
 
 // src/lib/micromark-syntax.js
-import {codes} from 'micromark-util-symbol'
+import {codes, constants, types as coreTokenTypes} from 'micromark-util-symbol'
 import {markdownLineEnding, markdownSpace} from 'micromark-util-character'
 
 const MARKER_CODE = codes.equalsTo
@@ -34,11 +34,51 @@ export function markSyntax () {
 
 /** @type {import('micromark-util-types').Tokenizer} */
 function tokenizeMark (effects, ok, nok) {
-  let closeSeqSize = 0
+
+  // This is the tokenizer for the potential closing sequence
+  const tokenizeClosingSequence = (effects, ok, nok) => {
+    let size = 0
+
+    return startSequence
+
+    function startSequence (code) {
+      // We are here because contentText saw an '='.
+      // That '=' is the 'code' passed to this function.
+      if (code !== MARKER_CODE) return nok(code) // Should not happen if called correctly
+      // Mark as temporary
+      effects.enter(
+        types.markSequence,
+        {_temporary: true},
+      )
+      effects.consume(code)
+      size++
+      return insideSequence
+    }
+
+    function insideSequence (code) {
+      if (size < SEQUENCE_SIZE && code === MARKER_CODE) {
+        effects.consume(code)
+        size++
+        return insideSequence // Stay in this state if we're building up the sequence
+      }
+
+      if (size === SEQUENCE_SIZE) {
+        effects.exit(types.markSequence)
+        // The `ok` callback (afterClosingSequenceSuccess) will handle exiting other tokens
+        return ok // `attempt` will call `afterClosingSequenceSuccess` with the char *after* `==`
+      }
+
+      // Not a full sequence (e.g., "=b" or just "=" at EOF/space)
+      // The `markSequence` was temporary, so `effects.attempt` will discard it.
+      return nok // `attempt` will call `afterClosingSequenceFail` with the original char that started the attempt
+    }
+  }
+
 
   return start
 
   /** @type {import('micromark-util-types').State} */
+  /* eslint-disable max-len */
   function start (code) {
     // `code` is the first suspected marker character.
     // Tokenizer is invoked when `MARKER_CODE` is seen.
@@ -46,6 +86,7 @@ function tokenizeMark (effects, ok, nok) {
     effects.consume(code) // Consume the first '='
     return insideOpeningSequence
   }
+  /* eslint-enable max-len */
 
   /** @type {import('micromark-util-types').State} */
   function insideOpeningSequence (code) {
@@ -71,6 +112,8 @@ function tokenizeMark (effects, ok, nok) {
     // Valid opening, proceed to content
     effects.enter(types.mark) // Enter the main "mark" token
     effects.enter(types.markText) // Enter the "markText" token for content
+    // Enter a chunkString token for the actual text data
+    effects.enter(coreTokenTypes.chunkString, {contentType: constants.contentTypeString})
     return contentText(code) // Start consuming content with the current valid character
   }
 
@@ -78,49 +121,43 @@ function tokenizeMark (effects, ok, nok) {
   function contentText (code) {
     if (code === codes.eof || markdownLineEnding(code)) {
       // Unterminated or newline breaks mark
+      effects.exit(coreTokenTypes.chunkString) // Exit chunkString before markText
       effects.exit(types.markText)
       effects.exit(types.mark)
       return nok(code)
     }
 
     if (code === MARKER_CODE) {
-      // Potential closing sequence
-      effects.exit(types.markText)
-      effects.enter(types.markSequence) // Potential closing sequence
-      closeSeqSize = 0
-      return closingSequence(code)
+      // Potential closing sequence. Exit current chunkString first.
+      effects.exit(coreTokenTypes.chunkString)
+
+      return effects.attempt(
+        {tokenize: tokenizeClosingSequence, partial: true},
+        afterClosingSequenceSuccess, // On success, chunkString is already exited.
+        afterClosingSequenceFailReEnterChunk, // On failure, must re-enter chunkString.
+      )(code)
     }
 
-    effects.consume(code)
+    effects.consume(code) // This is for the currently open chunkString
     return contentText
   }
 
-  /** @type {import('micromark-util-types').State} */
-  function closingSequence (code) {
-    if (code === MARKER_CODE && closeSeqSize < SEQUENCE_SIZE) {
-      effects.consume(code)
-      closeSeqSize++
-      return closingSequence
-    }
+  // chunkString was exited by contentText before attempt
+  function afterClosingSequenceSuccess (code) {
+    // effects.exit(coreTokenTypes.chunkString); // No longer needed here
+    effects.exit(types.markText)
+    effects.exit(types.mark)
+    return ok(code) // This `ok` is the main `ok` from `tokenizeMark`
+  }
 
-    if (closeSeqSize === SEQUENCE_SIZE) {
-      // Valid "==" closing sequence.
-      // Note: GFM spec for strikethrough (similar syntax) disallows preceding whitespace
-      // before the closing marker. This version does not implement that rule;
-      // e.g., `==text ==` will parse as marked text.
-
-      // Regarding `==a =b==` (single '=' consumed by closingSequence and then failing):
-      // TODO: Verify with tests. Theory suggests `partial:true` + `nok` handles this correctly.
-
-      effects.exit(types.markSequence) // Exit closing "=="
-      effects.exit(types.mark) // Exit main "mark"
-      return ok(code)
-    }
-
-    // Not a "==". This means the first "=" (that started the potential closing sequence)
-    // was actually part of the content.
-    // `nok` allows micromark to backtrack and re-parse that "=" as part of `markText`,
-    // thanks to `partial: true` on the tokenizer.
-    return nok(code)
+  // chunkString was exited by contentText before attempt
+  function afterClosingSequenceFailReEnterChunk (code) {
+    // Attempt failed. The original MARKER_CODE (which is `code` here) should be content.
+    // Re-enter chunkString to capture it.
+    // Re-enter chunkString
+    effects.enter(coreTokenTypes.chunkString, {contentType: constants.contentTypeString})
+    effects.consume(code) // Consume the MARKER_CODE ('=') as regular content
+    // chunkString is now open again.
+    return contentText // Go back to contentText for the next char.
   }
 }
