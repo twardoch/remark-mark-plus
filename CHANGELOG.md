@@ -18,7 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - ESLint configuration issues that prevented tests from running initially.
+- **Empty Marks Bug:** Corrected the `micromark-syntax.js` tokenizer to properly emit text content within `==mark==` syntax. Previously, `mark` mdast nodes did not capture their child text content, leading to empty `<mark></mark>` tags in HTML and `====` in Markdown serialization. The tokenizer now emits `chunkString` tokens for the content, allowing `mdast-util-from-markdown` to correctly populate the `mark` nodes with text children.
+
+### Changed
+- Refactored the tokenizer in `micromark-syntax.js` to use `effects.attempt` for handling potential closing sequences. This was intended to fix issues with parsing marks containing internal equals signs (e.g., `==a=b==`).
 
 ### Known Issues (Tests Failing)
-- **Empty Marks Bug:** Highlighted content is lost (e.g., `==text==` results in an empty mark). `mark` mdast nodes do not appear to capture their child text content. This leads to empty `<mark></mark>` tags in HTML (when a HAST handler is provided) and `====` in Markdown serialization.
-- **Tokenizer Bug for Complex Inputs:** Inputs like `==a=b==` are not parsed as marks but are treated as literal text, due to a logic flaw in the `micromark-syntax.js` tokenizer's handling of closing sequences.
+- **Tokenizer Bug - Appended Closing Delimiters:** After refactoring the tokenizer to use `effects.attempt` for closing sequences, a new issue has appeared: the closing `==` delimiters are being incorrectly appended to the content of the mark (e.g., `==text==` results in content `text==`). This affects all mark parsing. The original issue with inputs like `==a=b==` not being parsed as marks is resolved by the refactor in terms of content identification, but this new appended delimiter bug masks it.

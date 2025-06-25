@@ -1,43 +1,14 @@
-- [X] **Project Setup & Initial Cleanup:**
-    - [X] Create `PLAN.md` with this detailed plan.
-    - [X] Create `TODO.md` with a checklist summary.
-    - [X] Create an empty `CHANGELOG.md`.
-
-- [X] **`package.json` Refinements:**
-    - [X] Remove the duplicate "Victor Felder" entry from `contributors`.
-    - [X] Verify `devDependencies` (deferring updates for MVP).
-
-- [X] **`README.md` Corrections:**
-    - [X] Fix broken license link.
-    - [X] Review for typos/outdated info.
-
-- [X] **`src/lib/micromark-syntax.js` Review and Simplification:**
-    - [X] Remove commented-out unused variables.
-    - [X] Evaluate tokenizer logic (`checkAfterOpening`, `closingSequence`).
-        - [X] Verify `Disallow "===", "==\\s", or "==" at EOF.` (logic seems correct)
-        - [X] Address robust check for space before closing marker (decided to keep current simpler behavior for MVP).
-        - [ ] Address handling of cases like `==a=b==` (comments updated; to be verified in testing phase).
-    - [X] Clarify/remove "omitted for simplicity" comments.
-
-- [X] **`src/lib/mdast-util-handlers.js` Review:**
-    - [X] Review `markFromMarkdown` exit handlers (no changes needed).
-    - [X] Review `joinMark` and its comments (comments trimmed and clarified).
-
-- [X] **Code Comments and Documentation:**
-    - [X] Ensure JSDoc for public APIs (verified, looks good).
-    - [X] Remove misleading/outdated comments (addressed in previous steps and re-verified).
-
-- [X] **Testing:**
-    - [X] Run existing tests (they are failing, core issue: mdast `mark` nodes appear to have no children).
-    - [X] Add new test for `==a=b==` case (it fails, revealing a tokenizer bug where `==a=b==` is not parsed as a mark).
-    - [X] Decide on fixing tokenizer bug for `==a=b==` (DEFERRED for MVP, documented as known issue in CHANGELOG).
-    - [X] Prioritize fixing the "empty children" bug for mdast `mark` nodes (ATTEMPTED, bug remains, documented in CHANGELOG).
-
-- [X] **Build and Final Review:**
-    - [X] Run build (implicitly run by `npm install` and `npm test` pre-hooks, no separate build issues noted beyond test failures).
-    - [X] Review all changes (done throughout the process).
-    - [X] Update `CHANGELOG.md` (DONE).
-    - [X] Update `PLAN.md` and `TODO.md` (DONE for TODO, PLAN reflects current state).
-
-- [ ] **Submission:**
-    - [ ] Commit changes.
+- [X] Investigate "Empty Marks Bug" in tokenizer and mdast handler.
+- [X] Fix "Empty Marks Bug" (ensured text content is captured in mdast `mark` nodes).
+- [X] Update `CHANGELOG.md` for "Empty Marks Bug" fix.
+- [X] Investigate "Tokenizer Bug for Complex Inputs (`==a=b==`)" (original issue: `==a=b==` treated as literal).
+- [PARTIAL] Attempt to fix "Tokenizer Bug for Complex Inputs (`==a=b==`)" by refactoring tokenizer to use `effects.attempt`.
+    - This resolved the issue of `a=b` not being recognized as content within marks.
+    - However, this introduced a new critical bug: "Appended Closing Delimiters" (`==text==` produces content `text==`).
+- [X] Update `CHANGELOG.md` to reflect tokenizer refactoring and the new "Appended Closing Delimiters" bug.
+- [ ] **CRITICAL:** Investigate and fix "Appended Closing Delimiters" bug in `micromark-syntax.js`.
+- [ ] Verify fix for "Tokenizer Bug for Complex Inputs (`==a=b==`)" is fully effective once the appended delimiters bug is resolved.
+- [ ] Perform final testing of all features and edge cases.
+- [ ] Ensure build process (`npm run build`) is successful.
+- [ ] Address ESLint v9 compatibility issues (currently bypassed for testing).
+- [ ] Submit changes.

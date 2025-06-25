@@ -1,5 +1,35 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`parses mark parses a big fixture 1`] = `undefined`;
+exports[`parses mark parses a big fixture 1`] = `
+"<p>Blabla <mark>ok</mark> kxcvj <mark>ok foo</mark> sdff</p>
+<p>sdf ==== df</p>
+<p>sfdgs | | dfg == dgsg | qs</p>
+<p>With two equals signs: ==key== you'll get <mark>key</mark>.</p>
+<p>It can contain inline markdown:</p>
+<ul>
+<li><mark>hell[~~o~~](#he)?</mark></li>
+</ul>
+<p>It cannot contain blocks:</p>
+<ul>
+<li><mark>hello: [[secret]]?</mark></li>
+</ul>"
+`;
 
-exports[`to markdown 1`] = `undefined`;
+exports[`to markdown 1`] = `
+"Blabla ==ok== kxcvj ==ok foo== sdff
+
+sdf ==== df
+
+sfdgs | | dfg == dgsg | qs
+
+With two equals signs: ==key== you'll get ==key==.
+
+It can contain inline markdown:
+
+* ==hell\\[~~o~~]\\(#he)?==
+
+It cannot contain blocks:
+
+* ==hello: \\[\\[secret]]?==
+"
+`;

@@ -67,7 +67,7 @@
         "build": "del-cli dist && cross-env BABEL_ENV=production babel src --out-dir dist --source-maps",
         "coverage": "jest --coverage",
         "prepare": "npm run build",
-        "pretest": "eslint . --ext .js,.mjs",
+    "pretest": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext .js,.mjs",
         "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest"
     },
     "version": "1.0.21",
