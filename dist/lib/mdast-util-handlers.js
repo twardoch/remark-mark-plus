@@ -89,18 +89,12 @@ const markToMarkdown = exports.markToMarkdown = {
 
 /** @type {import('mdast-util-to-markdown').Join} */
 function joinMark(left, right, parent, context) {
-  // This join function is mostly for block-level context or specific inline joins.
-  // For typical phrasing content, default joins are usually fine.
-  // Example: Prevent a space if mark is followed by punctuation that shouldn't
-  // have a leading space.
-  // However, this is more complex than needed for a basic mark.
-  // The original from gfm-strikethrough is:
-  // function joinStrikethrough(left, right) {
-  //   return left.type !== 'strikethrough' || right.type !== 'text' || !/^\s/.test(right.value)
-  // }
-  // This means: do not join (implicitly, don't add extra space or merge)
-  // if strikethrough is followed by text starting with space.
-  // For `mark`, we can keep it simple or adopt a similar pattern if issues arise.
+  // This function influences how adjacent 'mark' nodes or 'mark' nodes and other
+  // phrasing content are joined during serialization.
+  // Returning `true` allows default joining behavior (e.g., adding a space
+  // between words, no space next to punctuation).
+  // Specific rules could prevent joining (return `false`) or force line breaks.
+  // For a simple 'mark' node, default behavior is usually sufficient.
   return true;
 }
 //# sourceMappingURL=mdast-util-handlers.js.map

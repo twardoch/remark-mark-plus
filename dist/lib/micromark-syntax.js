@@ -14,8 +14,6 @@ var _micromarkUtilCharacter = require("micromark-util-character");
 
 // src/lib/micromark-syntax.js
 
-// Removed: import {types as coreTypes} from 'micromark-util-symbol/types.js'
-
 const MARKER_CODE = _micromarkUtilSymbol.codes.equalsTo;
 const SEQUENCE_SIZE = 2;
 
@@ -50,11 +48,7 @@ function markSyntax() {
 
 /** @type {import('micromark-util-types').Tokenizer} */
 function tokenizeMark(effects, ok, nok) {
-  // const self = this // Removed as 'this' is used directly by state functions
-  // let openSeqSize = 0 // Replaced by direct state transitions
   let closeSeqSize = 0;
-  // Removed: let textStartPoint
-
   return start;
 
   /** @type {import('micromark-util-types').State} */
@@ -123,23 +117,21 @@ function tokenizeMark(effects, ok, nok) {
     if (closeSeqSize === SEQUENCE_SIZE) {
       // Valid "==" closing sequence.
       // Check if char before this closing sequence (last char of markText) was whitespace.
-      // This simplified version doesn't robustly check "no space before closing marker".
-      // It also doesn't correctly handle "==a =b==" (single '=' consumed by closingSequence
-      // and fail).
+      // The GFM spec for strikethrough (which is similar) says: "The closing ~~ can’t be preceded by whitespace."
+      // This version does not implement that rule; `==text ==` will parse.
 
-      // Example of a robust check (omitted for now for simplicity):
-      // const precedingChar = events[events.length - 1].previous /* ... complex access ... */
-      // if (markdownSpace(precedingChar)) return nok(code)
+      // It also doesn't correctly handle "==a =b==" (single '=' consumed by closingSequence
+      // and fail). // TODO: Verify with tests. Theory suggests `partial:true` + `nok` handles this.
 
       effects.exit(types.markSequence); // Exit closing "=="
       effects.exit(types.mark); // Exit main "mark"
       return ok(code);
     }
 
-    // Not a "==". This means the first "=" was part of text.
-    // We need to "re-tokenize" that first "=" as text.
-    // Simplest is `nok` here, assuming `partial:true` lets it be re-parsed as text.
-    // This means "==a=b==" would fail to parse the outer mark correctly.
+    // Not a "==". This means the first "=" (that started the potential closing sequence)
+    // was actually part of the content.
+    // `nok` allows micromark to backtrack and re-parse that "=" as part of `markText`,
+    // thanks to `partial: true` on the tokenizer.
     return nok(code);
   }
 }
