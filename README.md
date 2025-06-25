@@ -118,7 +118,7 @@ console.log(html) // Potentially just text if no HTML compiler, or tokens if con
 
 <!-- Definitions -->
 
-[license]: https://github.com/twardoch/remark-mark-plus/blob/master//LICENSE
+[license]: https://github.com/twardoch/remark-mark-plus/blob/master/LICENSE
 
 [npm]: https://www.npmjs.com/package/remark-mark-plus
 
