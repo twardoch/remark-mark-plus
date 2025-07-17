@@ -56,9 +56,10 @@ function tokenizeMark(effects, ok, nok) {
       // We are here because contentText saw an '='.
       // That '=' is the 'code' passed to this function.
       if (code !== MARKER_CODE) return nok(code); // Should not happen if called correctly
+      // Mark as temporary
       effects.enter(types.markSequence, {
         _temporary: true
-      }); // Mark as temporary
+      });
       effects.consume(code);
       size++;
       return insideSequence;
@@ -77,12 +78,15 @@ function tokenizeMark(effects, ok, nok) {
 
       // Not a full sequence (e.g., "=b" or just "=" at EOF/space)
       // The `markSequence` was temporary, so `effects.attempt` will discard it.
-      return nok; // `attempt` will call `afterClosingSequenceFail` with the original char that started the attempt
+      // `attempt` will call `afterClosingSequenceFail` with the original char
+      // that started the attempt
+      return nok;
     }
   };
   return start;
 
   /** @type {import('micromark-util-types').State} */
+  /* eslint-disable max-len */
   function start(code) {
     // `code` is the first suspected marker character.
     // Tokenizer is invoked when `MARKER_CODE` is seen.
@@ -90,6 +94,7 @@ function tokenizeMark(effects, ok, nok) {
     effects.consume(code); // Consume the first '='
     return insideOpeningSequence;
   }
+  /* eslint-enable max-len */
 
   /** @type {import('micromark-util-types').State} */
   function insideOpeningSequence(code) {
@@ -140,26 +145,29 @@ function tokenizeMark(effects, ok, nok) {
         partial: true
       }, afterClosingSequenceSuccess,
       // On success, chunkString is already exited.
-      afterClosingSequenceFail_reEnterChunk // On failure, must re-enter chunkString.
+      afterClosingSequenceFailReEnterChunk // On failure, must re-enter chunkString.
       )(code);
     }
     effects.consume(code); // This is for the currently open chunkString
     return contentText;
   }
+
+  // chunkString was exited by contentText before attempt
   function afterClosingSequenceSuccess(code) {
-    // chunkString was exited by contentText before attempt
     // effects.exit(coreTokenTypes.chunkString); // No longer needed here
     effects.exit(types.markText);
     effects.exit(types.mark);
     return ok(code); // This `ok` is the main `ok` from `tokenizeMark`
   }
-  function afterClosingSequenceFail_reEnterChunk(code) {
-    // chunkString was exited by contentText before attempt
+
+  // chunkString was exited by contentText before attempt
+  function afterClosingSequenceFailReEnterChunk(code) {
     // Attempt failed. The original MARKER_CODE (which is `code` here) should be content.
     // Re-enter chunkString to capture it.
+    // Re-enter chunkString
     effects.enter(_micromarkUtilSymbol.types.chunkString, {
       contentType: _micromarkUtilSymbol.constants.contentTypeString
-    }); // Re-enter chunkString
+    });
     effects.consume(code); // Consume the MARKER_CODE ('=') as regular content
     // chunkString is now open again.
     return contentText; // Go back to contentText for the next char.

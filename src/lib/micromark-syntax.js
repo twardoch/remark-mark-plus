@@ -70,7 +70,9 @@ function tokenizeMark (effects, ok, nok) {
 
       // Not a full sequence (e.g., "=b" or just "=" at EOF/space)
       // The `markSequence` was temporary, so `effects.attempt` will discard it.
-      return nok // `attempt` will call `afterClosingSequenceFail` with the original char that started the attempt
+      // `attempt` will call `afterClosingSequenceFail` with the original char
+      // that started the attempt
+      return nok
     }
   }
 
